@@ -1,0 +1,54 @@
+import logging
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, CallbackQueryHandler, filters
+from datetime import datetime, timedelta
+import sqlite3
+import ccxt
+
+# بياناتك
+TOKEN = "8627248426:AAEtvtxQzAThKrVmI1orIx7GF4-wFXSYG-4"
+ADMIN_ID = 5177962707
+VODAFONE_CASH = "01022829709"
+
+# قاعدة بيانات
+db = sqlite3.connect('diesel_bot.db', check_same_thread=False)
+cursor = db.cursor()
+cursor.execute('''CREATE TABLE IF NOT EXISTS users 
+                  (user_id INTEGER PRIMARY KEY, status TEXT, expiry_date TEXT, months_count INTEGER)''')
+db.commit()
+
+# محرك التداول
+exchange = ccxt.binance()
+
+async def start(update, context):
+    user_id = update.message.from_user.id
+    cursor.execute("SELECT months_count FROM users WHERE user_id=?", (user_id,))
+    row = cursor.fetchone()
+    count = (row[0] + 1) if row else 1
+    price = 100 if count == 1 else 200
+    await update.message.reply_text(f"🔥 DIESEL SIGNAL CORE 🔥\nاشتراك الشهر {count}: {price} جنيه.\nفودافون كاش: {VODAFONE_CASH}\nأرسل سكرين التحويل.")
+
+async def handle_photo(update, context):
+    user_id = update.message.from_user.id
+    keyboard = [[InlineKeyboardButton("✅ تفعيل", callback_data=f"activate_{user_id}")]]
+    await context.bot.send_photo(ADMIN_ID, photo=update.message.photo[-1].file_id, caption=f"طلب: {user_id}", reply_markup=InlineKeyboardMarkup(keyboard))
+    await update.message.reply_text("جاري المراجعة والتفعيل.")
+
+async def button_handler(update, context):
+    query = update.callback_query
+    if query.data.startswith("activate_"):
+        user_id = int(query.data.split("_")[1])
+        cursor.execute("SELECT months_count FROM users WHERE user_id=?", (user_id,))
+        count = (cursor.fetchone()[0] + 1) if cursor.fetchone() else 1
+        expiry = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
+        cursor.execute("INSERT OR REPLACE INTO users VALUES (?, ?, ?, ?)", (user_id, 'active', expiry, count))
+        db.commit()
+        await context.bot.send_message(user_id, "✅ تم تفعيل اشتراكك!")
+        await query.edit_message_caption("تم التفعيل.")
+
+if __name__ == '__main__':
+    app = ApplicationBuilder().token(TOKEN).post_init(lambda app: app.bot.send_message(ADMIN_ID, "🚀 DIESEL BOT RUNNING")).build()
+    app.add_handler(CommandHandler('start', start))
+    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+    app.add_handler(CallbackQueryHandler(button_handler))
+    app.run_polling()
